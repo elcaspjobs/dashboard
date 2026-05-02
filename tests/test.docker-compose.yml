@@ -1,45 +1,33 @@
 version: '3.8'
 
 services:
-  test_dashboard:
-    container_name: test_dashboard
-    build: ../.
-    env_file:
-      - ../.env
-    command: sh -c "python src/main.py"
-    volumes:
-      - ../.:/usr/src/app
-      - dashboard_logs:/usr/src/app/logs/dashboard
-    depends_on:
-      - test_db
 
-  test_db:
-    container_name: test_db
-    image: postgres:latest
+  test-postgres:
+    container_name: test-postgres
+    image: postgres:16-alpine
     env_file:
-      - ../.env
+      - .env.test
     volumes:
-      - ../.:/usr/src/app
       - postgres_data:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: test_dashboard_db
+      - POSTGRES_DB=test_dashboard_db
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
     healthcheck:
-      test: ["CMD-SHELL", "pg_is_ready -U admin -d test_dashboard_db"]
+      test: [ "CMD", "pg_isready", "-U", "user", "-h", "test-postgres" ]
       interval: 3s
       timeout: 5s
       retries: 3
     ports:
-      - 5432:5432
+      - "5432:5432"
     restart: always
 
   test_rabbitmq:
     container_name: test_rabbitmq
     image: rabbitmq:latest
     environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-quest}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-pass}
+      RABBITMQ_DEFAULT_USER: quest
+      RABBITMQ_DEFAULT_PASS: pass
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -50,29 +38,60 @@ services:
       interval: 5s
       timeout: 10s
       retries: 5
-    env_file:
-      - ../.env
 
   tests:
     container_name: tests
     env_file:
-      - ../.env
+      - .env.test
     build:
       context: ../.
     volumes:
       - ../.:/usr/src/app
     entrypoint: >
       sh -c "
-      while ! nc -z test_db 5432; do sleep 1; done && 
+      while ! nc -z test-postgres 5432; do sleep 1; done && 
       pytest tests/src/
       "
     depends_on:
-      - test_db
+      test-postgres:
+        condition: service_healthy
+
+  taskiq_scheduler:
+    container_name: taskiq_scheduler
+    build:
+      context: ../.
+    volumes:
+      - ../.:/usr/src/app
+    depends_on:
+      test_rabbitmq:
+        condition: service_healthy
+    env_file:
+      - .env.test
+    command: >
+      sh -c "taskiq scheduler src.presentation.task_iq.main:scheduler -fsd"
+
+
+  taskiq_worker:
+    container_name: taskiq_worker
+    build:
+      context: ../.
+    volumes:
+      - ../.:/usr/src/app
+    env_file:
+      - .env.test
+    depends_on:
+      test_rabbitmq:
+        condition: service_healthy
+
+    command: sh -c "taskiq worker src.presentation.task_iq.main:broker -fsd"
+
+
+
+
 
 volumes:
   rabbitmq_data:
   postgres_data:
-  dashboard_logs:
 
 
 

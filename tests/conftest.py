@@ -1,25 +1,40 @@
 import pytest
-import os
-from src.core.logger import setup_logging
-from src.infrastructure.config.config_storage import Config
+import structlog
 
 
-@pytest.fixture(autouse=True)
-def setup_test_logging():
-    setup_logging()
+@pytest.fixture(autouse=True, name="logger", scope="session")
+def logger_setup():
+    logger = structlog.get_logger()
 
+    shared_processors = [
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.StackInfoRenderer(),
+        structlog.dev.set_exc_info,
+        structlog.processors.TimeStamper(fmt="%Y-%m-%d %H:%M:%S", utc=True),
+        structlog.processors.CallsiteParameterAdder(
+            [
+                structlog.processors.CallsiteParameter.FILENAME,
+                structlog.processors.CallsiteParameter.LINENO,
+            ]
+        ),
+    ]
+    processors = [
+        *shared_processors,
+        structlog.dev.ConsoleRenderer(colors=True, exception_formatter=structlog.dev.plain_traceback),
+    ]
 
-@pytest.fixture(scope='function')
-def config_setup():
-    return Config(
-        db_dsn=os.environ.get('DB_DSN'),
-        rabbitmq=os.environ.get('RABBITMQ_URL'),
+    structlog.configure(
+        processors=processors,
+        logger_factory=structlog.PrintLoggerFactory(),
+        cache_logger_on_first_use=False,
     )
+    return logger
 
 
 pytest_plugins = [
-    "tests.fixtures.database",
+    "tests.fixtures.postgres",
     "tests.fixtures.entities",
+    "tests.fixtures.config",
+    "tests.fixtures.server_api",
 ]
-
-

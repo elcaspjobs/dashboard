@@ -4,11 +4,15 @@ from abc import ABC, abstractmethod
 class BaseRepository(ABC):
 
     @abstractmethod
-    def create(self, *args, **kwargs):
+    async def create(self, *args, **kwargs):
         pass
 
     @abstractmethod
-    def get(self, *args, **kwargs):
+    async def get(self, *args, **kwargs):
         pass
 
 
+class GetRepository(ABC):
+    @abstractmethod
+    async def get(self, *args, **kwargs):
+        pass

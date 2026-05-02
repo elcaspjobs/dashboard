@@ -5,9 +5,11 @@ from typing import Protocol
 class UnitOfWork(Protocol):
 
     @abstractmethod
-    def commit(self):
+    async def commit(self):
         pass
 
     @abstractmethod
-    def rollback(self):
+    async def rollback(self):
         pass
+
+

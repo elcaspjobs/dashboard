@@ -1,7 +1,10 @@
 .idea
 __pycache__
-.env
 .coverage
 logs/
 htmlcov/
 venv
+.env
+tests/.env.test
+.venv
+docker-compose.yml

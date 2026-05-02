@@ -1,4 +1,6 @@
-from src.domain.entities.dashboard_entity import Dashboard
+import pytest
+from uuid import UUID
+from src.domain.entities.dashboard import Dashboard
 from faker import Faker
 import pytest_asyncio
 
@@ -18,15 +20,9 @@ SOCIAL_STATS = {
 
 
 @pytest_asyncio.fixture
-async def dashboard_entity(session):
-    async def _factory(**overrides):
-        dash_data = {
-            **dashboard_faker(),
-            **overrides,
-        }
-        return Dashboard(**dash_data)
-
-    return _factory
+async def dashboard_entity():
+    data = dashboard_faker()
+    return Dashboard(**data)
 
 
 def dashboard_faker(**overrides):
@@ -35,9 +31,17 @@ def dashboard_faker(**overrides):
         "id": faker.uuid4(),
         "social": social,
         "company_id": faker.random_int(min=1, max=100),
-        "stats_kwargs": SOCIAL_STATS[social],
-        "created_at": faker.date_time()
-
+        "statistic": SOCIAL_STATS[social],
     }
     data.update(**overrides)
     return data
+
+
+@pytest.fixture
+def dashboard_youtube_entity():
+    return Dashboard(
+        id=UUID(str(faker.uuid4())),
+        social="youtube",
+        company_id=faker.random_int(min=1, max=100),
+        statistic=SOCIAL_STATS["youtube"],
+    )

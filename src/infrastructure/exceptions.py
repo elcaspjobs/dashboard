@@ -42,6 +42,12 @@ class BaseRepositoryError(BaseError):
         super().__init__(message, original_exception=original_exception)
 
 
+class PollingError(BaseError):
+    def __init__(self, message: str, *, original_exception: Exception | None = None):
+        message = ErrorMessages.TASK_FAILED.format(message)
+        super().__init__(message, original_exception=original_exception)
+
+
 class CommittingError(BaseError):
     def __init__(self, message: str, *, original_exception: Exception | None = None):
         message = ErrorMessages.COMMITTING_ERROR.format(message)
